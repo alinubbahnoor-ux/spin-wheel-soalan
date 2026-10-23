@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spin the Wheel - Perkongsian</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f6ff;
+  text-align: center;
+  padding: 20px;
+  color: #183153;
+}
+.kad {
+  background: white;
+  max-width: 500px;
+  margin: 25px auto;
+  padding: 28px 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px #0002;
+}
+h1 { color: #175cd3; }
+.label {
+  background: #dbeafe;
+  padding: 10px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+.soalan {
+  font-size: 25px;
+  line-height: 1.5;
+  margin: 28px 0;
+}
+button {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  margin: 12px 0;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.main { background: #1769e0; color: white; }
+.stop { background: #fee2e2; color: #991b1b; }
+#status { font-size: 14px; color: #555; }
+</style>
+</head>
+
+<body>
+<div class="kad">
+  <h1>🎡 SPIN THE WHEEL</h1>
+  <div class="label">STESEN PERKONGSIAN</div>
+
+  <p><strong>SOALAN PK01</strong></p>
+
+  <div class="soalan" id="soalan">
+    Apakah maksud perkongsian?
+  </div>
+
+  <button class="main" onclick="bacaSoalan()">
+    🔊 DENGAR SEMULA
+  </button>
+
+  <button class="stop" onclick="hentiSuara()">
+    ⏹ HENTI SUARA
+  </button>
+
+  <p id="status">Sistem menyediakan suara...</p>
+</div>
+
+<script>
+function bacaSoalan() {
+  if (!("speechSynthesis" in window)) {
+    document.getElementById("status").textContent =
+      "Suara tidak disokong. Sila baca soalan pada skrin.";
+    return;
+  }
+
+  const suara = window.speechSynthesis;
+  suara.cancel();
+
+  const teks = new SpeechSynthesisUtterance(
+    "Soalan PK kosong satu. Apakah maksud perkongsian?"
+  );
+
+  teks.lang = "ms-MY";
+  teks.rate = 0.85;
+  teks.pitch = 1;
+
+  const senaraiSuara = suara.getVoices();
+  const suaraMelayu = senaraiSuara.find(v =>
+    v.lang.toLowerCase().startsWith("ms")
+  );
+
+  if (suaraMelayu) {
+    teks.voice = suaraMelayu;
+  }
+
+  teks.onstart = function() {
+    document.getElementById("status").textContent =
+      "🔊 Soalan sedang dibacakan...";
+  };
+
+  teks.onend = function() {
+    document.getElementById("status").textContent =
+      "Selesai. Tekan Dengar Semula jika perlu.";
+  };
+
+  teks.onerror = function() {
+    document.getElementById("status").textContent =
+      "Audio tidak dapat dimainkan. Tekan Dengar Semula.";
+  };
+
+  suara.speak(teks);
+}
+
+function hentiSuara() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    document.getElementById("status").textContent =
+      "Suara dihentikan.";
+  }
+}
+
+window.addEventListener("load", function() {
+  document.getElementById("status").textContent =
+    "Cuba memainkan soalan secara automatik...";
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.getVoices();
+    setTimeout(bacaSoalan, 800);
+  } else {
+    document.getElementById("status").textContent =
+      "Tekan Dengar Semula untuk mencuba audio.";
+  }
+});
+</script>
+</body>
+</html>
