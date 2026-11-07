@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101a43">
+<title>Roda Kuiz Perniagaan Tingkatan 4</title>
+<style>
+:root{--navy:#101a43;--blue:#2846a8;--gold:#ffd166;--paper:#f5f7ff;--ink:#17213e;--green:#16865b;--red:#c63d50}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(145deg,#101a43,#253b82);color:white;min-height:100vh}
+.wrap{max-width:900px;margin:auto;padding:18px}
+header{text-align:center;padding:12px 0 18px}
+h1{font-size:clamp(24px,5vw,38px);margin:8px 0;color:var(--gold)}
+.sub{opacity:.9;margin:0}
+.panel{background:white;color:var(--ink);border-radius:22px;padding:20px;box-shadow:0 12px 35px #0003;margin:14px 0}
+.hidden{display:none!important}
+input{width:100%;padding:14px;border:2px solid #d8def0;border-radius:12px;font-size:17px;margin:10px 0}
+button{border:0;border-radius:13px;padding:13px 18px;font-size:16px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.primary{background:var(--gold);color:#17213e}
+.secondary{background:#e8edff;color:#20336f}
+.danger{background:#ffe5e8;color:#a3263a}
+.center{text-align:center}
+.stats{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:#edf1ff;border-radius:12px;padding:10px 14px;flex:1;text-align:center;min-width:95px}
+.stat strong{display:block;font-size:22px;color:#203b91}
+.wheel-area{display:flex;justify-content:center;align-items:center;position:relative;margin:18px auto 8px;max-width:390px}
+canvas{width:min(82vw,340px);height:min(82vw,340px);max-width:340px;max-height:340px}
+.pointer{position:absolute;top:-5px;left:50%;transform:translateX(-50%);z-index:2;width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:34px solid var(--gold);filter:drop-shadow(0 2px 2px #333)}
+.question{font-size:20px;line-height:1.45;font-weight:700;margin:10px 0 16px}
+.option{display:block;width:100%;text-align:left;background:#f0f3ff;color:#18254e;margin:9px 0;border:2px solid transparent}
+.option.selected{border-color:#3155bd;background:#e2eaff}
+.option.correct{background:#dff6e9;border-color:#16865b}
+.option.wrong{background:#ffe5e8;border-color:#c63d50}
+.feedback{padding:13px;border-radius:12px;margin-top:12px;line-height:1.45}
+.good{background:#e0f7ea;color:#125e3f}.bad{background:#ffeaed;color:#9b2639}
+.muted{color:#64708c;font-size:14px}
+.progress{height:10px;background:#e8ecf8;border-radius:99px;overflow:hidden;margin:12px 0}
+.progress>div{height:100%;background:#3155bd;width:0%;transition:width .3s}
+table{width:100%;border-collapse:collapse;color:var(--ink)}
+td,th{padding:10px;border-bottom:1px solid #e5e9f3;text-align:left}
+footer{text-align:center;font-size:12px;opacity:.75;padding:12px}
+@media(max-width:520px){.panel{padding:16px}.question{font-size:18px}.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div style="font-size:42px">🎡</div>
+  <h1>RODA KUIZ PERNIAGAAN</h1>
+  <p class="sub">TINGKATAN 4 • 20 SOALAN • CABAR DIRI ANDA!</p>
+</header>
+
+<section id="start" class="panel center">
+  <h2>Selamat datang, usahawan muda!</h2>
+  <p>Masukkan nama untuk memulakan permainan.</p>
+  <input id="playerName" maxlength="30" placeholder="Nama murid" autocomplete="name">
+  <button class="primary" onclick="startGame()">MULA BERMAIN 🚀</button>
+  <p class="muted">20 soalan • 10 markah setiap jawapan betul • Jumlah maksimum 200 markah</p>
+</section>
+
+<section id="game" class="panel hidden">
+  <div class="stats">
+    <div class="stat"><span>Murid</span><strong id="nameDisplay" style="font-size:16px">—</strong></div>
+    <div class="stat"><span>Soalan</span><strong id="qCount">0/20</strong></div>
+    <div class="stat"><span>Markah</span><strong id="score">0</strong></div>
+  </div>
+  <div class="progress"><div id="progressBar"></div></div>
+  <div id="wheelStage" class="center">
+    <h2>Putarkan roda untuk memilih kategori!</h2>
+    <div class="wheel-area"><div class="pointer"></div><canvas id="wheel" width="600" height="600"></canvas></div>
+    <button id="spinBtn" class="primary" onclick="spinWheel()">PUTAR RODA 🎡</button>
+    <p id="spinMessage" class="muted">Setiap putaran akan membawa anda kepada satu soalan.</p>
+  </div>
+  <div id="questionStage" class="hidden">
+    <p class="muted" id="categoryLabel"></p>
+    <div class="question" id="questionText"></div>
+    <div id="options"></div>
+    <div id="feedback" class="feedback hidden"></div>
+    <div class="center" style="margin-top:15px">
+      <button id="nextBtn" class="primary hidden" onclick="nextQuestion()">SOALAN SETERUSNYA ➜</button>
+    </div>
+  </div>
+</section>
+
+<section id="result" class="panel hidden center">
+  <div style="font-size:54px">🏆</div>
+  <h2>Permainan Tamat!</h2>
+  <p id="resultName"></p>
+  <div class="stats">
+    <div class="stat"><span>Markah</span><strong id="finalScore">0/200</strong></div>
+    <div class="stat"><span>Jawapan betul</span><strong id="finalCorrect">0/20</strong></div>
+    <div class="stat"><span>Pencapaian</span><strong id="finalPercent">0%</strong></div>
+  </div>
+  <h3 id="remark"></h3>
+  <button class="primary" onclick="location.reload()">MAIN SEMULA</button>
+  <button class="secondary" onclick="showLeaderboard()">LIHAT KEDUDUKAN</button>
+</section>
+
+<section id="leaderboard" class="panel hidden">
+  <h2 class="center">🏅 Rekod Permainan pada Peranti Ini</h2>
+  <p class="muted center">Rekod ini disimpan dalam pelayar peranti yang digunakan.</p>
+  <div id="leaderboardRows"></div>
+  <div class="center" style="margin-top:15px"><button class="secondary" onclick="hideLeaderboard()">TUTUP</button></div>
+</section>
+<footer>Game pendidikan Perniagaan Tingkatan 4 • Dibina untuk aktiviti PdP</footer>
+</div>
+
+<script>
+const categories = [
+ {name:"Asas Perniagaan",color:"#f94144"},
+ {name:"Bentuk Pemilikan",color:"#f8961e"},
+ {name:"Tujuan Perniagaan",color:"#f9c74f"},
+ {name:"Fungsi Perniagaan",color:"#43aa8b"},
+ {name:"Pengurusan",color:"#577590"},
+ {name:"Aplikasi & KBAT",color:"#9b5de5"}
+];
+const questions = [
+{c:0,q:"Apakah maksud perniagaan?",o:["Aktiviti menghasilkan atau menjual barang dan perkhidmatan untuk memenuhi keperluan pelanggan","Aktiviti menggunakan barang untuk kegunaan sendiri sahaja","Aktiviti mengurus keluarga tanpa urusan jual beli","Aktiviti memberi bantuan tanpa pertukaran"],a:0,e:"Perniagaan melibatkan aktiviti menghasilkan atau menjual barang dan perkhidmatan kepada pelanggan."},
+{c:2,q:"Apakah tujuan utama perniagaan bermotifkan untung?",o:["Memaksimumkan kebajikan tanpa mengambil kira hasil","Mendapatkan keuntungan melalui aktiviti perniagaan","Memberikan semua produk secara percuma","Menghapuskan semua persaingan pasaran"],a:1,e:"Keuntungan ialah lebihan hasil berbanding kos."},
+{c:1,q:"Milikan tunggal dimiliki oleh seorang individu sahaja.",o:["Betul","Salah"],a:0,e:"Milikan tunggal mempunyai seorang pemilik." ,tf:true},
+{c:1,q:"Apakah ciri utama perkongsian?",o:["Dimiliki seorang individu sahaja","Dimiliki dua orang atau lebih mengikut perjanjian","Dimiliki sepenuhnya oleh kerajaan","Dimiliki anggota melalui syer koperasi"],a:1,e:"Perkongsian melibatkan sekurang-kurangnya dua orang yang menjalankan perniagaan bersama."},
+{c:1,q:"Dokumen manakah mengandungi peraturan dan tatacara pengurusan sesebuah syarikat?",o:["Invois jualan","Resit pembayaran","Perlembagaan syarikat","Penyata bank"],a:2,e:"Perlembagaan syarikat menjadi rujukan berkaitan pengurusan dan pentadbiran syarikat."},
+{c:1,q:"Apakah ciri liabiliti tidak terhad?",o:["Tanggungan terhad kepada modal dilaburkan","Pemilik tidak bertanggungjawab terhadap hutang","Harta peribadi pemilik boleh digunakan untuk menjelaskan hutang","Semua hutang dihapuskan apabila rugi"],a:2,e:"Liabiliti tidak terhad boleh menyebabkan harta peribadi pemilik digunakan untuk menjelaskan hutang, tertakluk kepada undang-undang."},
+{c:1,q:"Koperasi ditubuhkan untuk menjaga kepentingan ekonomi anggotanya melalui usaha bersama.",o:["Betul","Salah"],a:0,e:"Koperasi menjalankan aktiviti bersama demi kepentingan ekonomi dan kebajikan anggota.",tf:true},
+{c:0,q:"Yang manakah contoh sektor utama ekonomi?",o:["Pertanian","Perbankan","Pembuatan kereta","Pengangkutan"],a:0,e:"Pertanian melibatkan pengeluaran sumber daripada alam semula jadi."},
+{c:3,q:"Apakah fungsi utama jabatan pemasaran?",o:["Mengurus pengambilan pekerja","Mempromosikan produk dan meningkatkan jualan","Menyediakan penyata kewangan","Menghasilkan produk di kilang"],a:1,e:"Pemasaran mengenal pasti keperluan pelanggan serta mempromosikan produk."},
+{c:3,q:"Yang manakah fungsi jabatan sumber manusia?",o:["Mengurus pengambilan pekerja","Mengurus latihan dan pembangunan pekerja","Menentukan reka bentuk iklan produk","Mengurus kebajikan dan pampasan pekerja"],a:[0,1,3],multi:true,e:"Sumber manusia mengurus pengambilan, latihan, kebajikan dan pampasan pekerja."},
+{c:3,q:"Apakah tujuan penyata aliran tunai disediakan?",o:["Menentukan jumlah pelanggan baharu","Menunjukkan pergerakan wang masuk dan wang keluar","Menentukan jumlah pekerja bercuti","Menentukan strategi pengiklanan sahaja"],a:1,e:"Penyata aliran tunai menunjukkan aliran wang masuk dan keluar dalam tempoh tertentu."},
+{c:4,q:"Apakah maksud visi perniagaan?",o:["Tugas harian pekerja","Sasaran jualan bulan semasa sahaja","Aspirasi atau hala tuju yang ingin dicapai pada masa hadapan","Senarai aset tetap perniagaan"],a:2,e:"Visi menggambarkan aspirasi masa hadapan sesebuah organisasi."},
+{c:4,q:"Apakah maksud objektif perniagaan?",o:["Hasil atau sasaran khusus yang ingin dicapai","Senarai nama pesaing","Jumlah hutang pemilik sahaja","Reka bentuk bangunan perniagaan"],a:0,e:"Objektif ialah sasaran yang ingin dicapai oleh organisasi."},
+{c:4,q:"Apakah maksud analisis SWOT?",o:["Jualan, wang, operasi dan teknologi","Kekuatan, kelemahan, peluang dan ancaman","Sasaran, wawasan, operasi dan tugas","Sumber, pekerja, organisasi dan teknologi"],a:1,e:"SWOT ialah Strengths, Weaknesses, Opportunities dan Threats."},
+{c:4,q:"Yang manakah faktor luaran dalam analisis SWOT? Pilih semua jawapan yang betul.",o:["Peluang pasaran","Ancaman pesaing","Kemahiran pekerja dalaman","Kelemahan sistem pengurusan dalaman"],a:[0,1],multi:true,e:"Peluang dan ancaman ialah faktor luaran; kekuatan dan kelemahan ialah faktor dalaman."},
+{c:5,q:"Kedai menjual 100 unit produk pada harga RM20 seunit. Berapakah jumlah hasil jualan?",o:["RM200","RM1,000","RM2,000","RM20,000"],a:2,e:"100 × RM20 = RM2,000."},
+{c:2,q:"Apakah maksud pulangan modal dalam konteks perniagaan?",o:["Pulangan yang diperoleh daripada modal yang dilaburkan","Jumlah pekerja yang diambil","Jumlah stok yang disimpan","Jumlah pelanggan yang membuat aduan"],a:0,e:"Pulangan modal merujuk kepada hasil atau pulangan daripada pelaburan modal."},
+{c:5,q:"Apakah kelebihan utama penggunaan e-dagang kepada perniagaan makanan dalam talian?",o:["Perniagaan hanya boleh beroperasi pada waktu pejabat","Perniagaan dapat mencapai pelanggan di kawasan lebih luas","Perniagaan tidak memerlukan pengurusan stok","Semua kos perniagaan menjadi sifar"],a:1,e:"Platform digital membantu perniagaan mencapai pelanggan tanpa bergantung sepenuhnya pada lokasi fizikal."},
+{c:3,q:"Apakah tanggungjawab utama jabatan pengeluaran?",o:["Mengurus gaji pekerja","Menghasilkan barang atau menyediakan perkhidmatan","Menyediakan kempen promosi","Merekod transaksi bank sahaja"],a:1,e:"Jabatan pengeluaran mengurus proses menghasilkan produk atau menyediakan perkhidmatan."},
+{c:5,q:"Pelanggan banyak mengadu kerana produk sering rosak. Apakah tindakan paling sesuai?",o:["Mengurangkan pemeriksaan kualiti","Menaikkan harga tanpa penambahbaikan","Memperketat kawalan kualiti dan memperbaiki proses pengeluaran","Mengabaikan aduan pelanggan"],a:2,e:"Kawalan kualiti dan penambahbaikan proses dapat mengurangkan kerosakan produk."}
+];
+let player="",score=0,correct=0,asked=[],current=null,spinning=false,rotation=0;
+const canvas=document.getElementById("wheel"),ctx=canvas.getContext("2d");
+function drawWheel(){
+ const n=categories.length,arc=2*Math.PI/n,cx=300,cy=300,r=280;
+ ctx.clearRect(0,0,600,600);
+ categories.forEach((cat,i)=>{
+  const start=rotation+i*arc-Math.PI/2,end=start+arc;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();ctx.fillStyle=cat.color;ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=5;ctx.stroke();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(start+arc/2);ctx.textAlign="right";ctx.fillStyle="#fff";ctx.font="bold 24px Arial";ctx.shadowColor="#333";ctx.shadowBlur=3;ctx.fillText(cat.name, r-20,8);ctx.restore();
+ });
+ ctx.beginPath();ctx.arc(cx,cy,43,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#14265e";ctx.lineWidth=7;ctx.stroke();
+ ctx.fillStyle="#17213e";ctx.font="bold 18px Arial";ctx.textAlign="center";ctx.fillText("SPIN",cx,cy+7);
+}
+drawWheel();
+function startGame(){
+ const val=document.getElementById("playerName").value.trim();
+ if(!val){alert("Sila masukkan nama terlebih dahulu.");return;}
+ player=val;document.getElementById("nameDisplay").textContent=player;
+ document.getElementById("start").classList.add("hidden");document.getElementById("game").classList.remove("hidden");updateStats();
+}
+function updateStats(){
+ document.getElementById("qCount").textContent=asked.length+"/20";
+ document.getElementById("score").textContent=score;
+ document.getElementById("progressBar").style.width=(asked.length/20*100)+"%";
+}
+function spinWheel(){
+ if(spinning||asked.length>=20)return;
+ spinning=true;document.getElementById("spinBtn").disabled=true;
+ const available=questions.map((q,i)=>i).filter(i=>!asked.includes(i));
+ const pick=available[Math.floor(Math.random()*available.length)];
+ const cat=questions[pick].c,n=categories.length,arc=2*Math.PI/n;
+ // Pointer at top. Land near centre of the selected category slice.
+ const target=((-(cat*arc+arc/2))%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+ const currentNorm=((rotation%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+ const extra=6*2*Math.PI+((target-currentNorm+2*Math.PI)%(2*Math.PI));
+ const start=rotation,duration=3600,begin=performance.now();
+ function animate(now){
+  const t=Math.min(1,(now-begin)/duration),ease=1-Math.pow(1-t,4);
+  rotation=start+extra*ease;drawWheel();
+  if(t<1)requestAnimationFrame(animate);
+  else{rotation=((rotation%(2*Math.PI))+2*Math.PI)%(2*Math.PI);drawWheel();spinning=false;current=pick;showQuestion();}
+ }
+ requestAnimationFrame(animate);
+}
+function showQuestion(){
+ const q=questions[current];asked.push(current);
+ document.getElementById("wheelStage").classList.add("hidden");
+ document.getElementById("questionStage").classList.remove("hidden");
+ document.getElementById("categoryLabel").textContent="KATEGORI: "+categories[q.c].name+" • SOALAN "+asked.length;
+ document.getElementById("questionText").textContent=q.q;
+ const box=document.getElementById("options");box.innerHTML="";
+ q.o.forEach((opt,i)=>{
+  const b=document.createElement("button");b.className="option";
+  b.textContent=(q.tf?"":"ABCD"[i]+". ")+opt;
+  b.onclick=()=>chooseAnswer(i,b);box.appendChild(b);
+ });
+ document.getElementById("feedback").className="feedback hidden";
+ document.getElementById("nextBtn").classList.add("hidden");
+ updateStats();
+}
+function chooseAnswer(index,button){
+ const q=questions[current],buttons=[...document.querySelectorAll(".option")];
+ buttons.forEach(b=>b.disabled=true);
+ const chosen=q.multi?[]:[index];
+ if(q.multi){
+  // In multi-select, the first tap opens a temporary selection mode.
+  buttons.forEach((b,i)=>{b.disabled=false;b.classList.toggle("selected",i===index);});
+  const controls=document.createElement("div");controls.className="center";controls.style.marginTop="12px";
+  const confirm=document.createElement("button");confirm.className="primary";confirm.textContent="SAHKAN PILIHAN";
+  confirm.onclick=()=>{
+   const picks=buttons.map((b,i)=>b.classList.contains("selected")?i:-1).filter(i=>i>=0);
+   buttons.forEach(b=>b.disabled=true);confirm.disabled=true;
+   grade(picks);
+  };
+  const hint=document.createElement("p");hint.className="muted";hint.textContent="Pilih semua jawapan yang betul, kemudian sahkan.";
+  controls.append(hint,confirm);document.getElementById("options").appendChild(controls);
+  buttons.forEach((b,i)=>b.onclick=()=>{if(!b.disabled)b.classList.toggle("selected");});
+  return;
+ }
+ grade(chosen);
+}
+function grade(picks){
+ const q=questions[current],right=Array.isArray(q.a)?q.a:[q.a];
+ const ok=picks.length===right.length&&picks.every(x=>right.includes(x));
+ if(ok){score+=10;correct++;}
+ const buttons=[...document.querySelectorAll(".option")];
+ buttons.forEach((b,i)=>{
+  b.disabled=true;
+  if(right.includes(i))b.classList.add("correct");
+  else if(picks.includes(i))b.classList.add("wrong");
+ });
+ const fb=document.getElementById("feedback");fb.classList.remove("hidden","good","bad");fb.classList.add(ok?"good":"bad");
+ fb.innerHTML=(ok?"<strong>Betul! +10 markah.</strong> ":"<strong>Belum tepat. +0 markah.</strong> ")+q.e;
+ document.getElementById("nextBtn").classList.remove("hidden");
+ document.getElementById("nextBtn").textContent=asked.length===20?"LIHAT KEPUTUSAN 🏆":"SOALAN SETERUSNYA ➜";
+ updateStats();
+}
+function nextQuestion(){
+ if(asked.length>=20){finish();return;}
+ document.getElementById("questionStage").classList.add("hidden");
+ document.getElementById("wheelStage").classList.remove("hidden");
+ document.getElementById("spinBtn").disabled=false;
+ document.getElementById("spinMessage").textContent="Soalan seterusnya menanti anda!";
+}
+function finish(){
+ document.getElementById("game").classList.add("hidden");document.getElementById("result").classList.remove("hidden");
+ const pct=Math.round(correct/20*100);
+ document.getElementById("resultName").textContent="Tahniah, "+player+"!";
+ document.getElementById("finalScore").textContent=score+"/200";
+ document.getElementById("finalCorrect").textContent=correct+"/20";
+ document.getElementById("finalPercent").textContent=pct+"%";
+ document.getElementById("remark").textContent=pct>=80?"Cemerlang! Anda memang hebat! 🌟":pct>=60?"Bagus! Teruskan usaha! 👍":pct>=40?"Usaha yang baik. Cuba lagi! 💪":"Jangan putus asa. Ulang kaji dan cuba sekali lagi!";
+ const rows=JSON.parse(localStorage.getItem("rodaPerniagaanScores")||"[]");
+ rows.push({name:player,score,correct,date:new Date().toLocaleDateString("ms-MY")});
+ rows.sort((a,b)=>b.score-a.score);
+ localStorage.setItem("rodaPerniagaanScores",JSON.stringify(rows.slice(0,20)));
+}
+function showLeaderboard(){
+ document.getElementById("leaderboard").classList.remove("hidden");renderLeaderboard();
+}
+function hideLeaderboard(){document.getElementById("leaderboard").classList.add("hidden");}
+function renderLeaderboard(){
+ const rows=JSON.parse(localStorage.getItem("rodaPerniagaanScores")||"[]");
+ const box=document.getElementById("leaderboardRows");
+ if(!rows.length){box.innerHTML="<p class='center'>Belum ada rekod.</p>";return;}
+ const table=document.createElement("table");
+ table.innerHTML="<thead><tr><th>Kedudukan</th><th>Nama</th><th>Markah</th><th>Tarikh</th></tr></thead>";
+ const body=document.createElement("tbody");
+ rows.forEach((r,i)=>{const tr=document.createElement("tr");[i+1,r.name,r.score+"/200",r.date].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});body.appendChild(tr);});
+ table.appendChild(body);box.replaceChildren(table);
+}
+</script>
+</body>
+</html>
